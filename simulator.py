@@ -285,13 +285,13 @@ class Pillar:
         if self.image_direction == 'N':
             pygame.draw.rect(screen, BLUE, 
                             (scaled(self.x * CELL_SIZE) + border_thickness, 
-                            adjusted_y + 3 * quarter_cell, 
+                            adjusted_y + border_thickness, 
                             scaled(CELL_SIZE) - 2 * border_thickness, 
                             quarter_cell - border_thickness))
         elif self.image_direction == 'S':
             pygame.draw.rect(screen, BLUE, 
                             (scaled(self.x * CELL_SIZE) + border_thickness, 
-                            adjusted_y + border_thickness, 
+                            adjusted_y + 3 * quarter_cell, 
                             scaled(CELL_SIZE) - 2 * border_thickness, 
                             quarter_cell - border_thickness))
         elif self.image_direction == 'E':
@@ -330,11 +330,11 @@ class Button:
 
 # Sample pillars
 pillars = [
+    Pillar(15, 1, 'N'), 
+    # Pillar(15, 5, 'N'), 
+    # Pillar(19, 15, 'W'),
     # Pillar(5, 5, 'N'), 
-    # Pillar(15, 5, 'E'), 
-    # Pillar(5, 15, 'S'), 
     # Pillar(15, 15, 'W'), 
-    Pillar(19, 15, 'W')
 ]
 
 # Initialize robot

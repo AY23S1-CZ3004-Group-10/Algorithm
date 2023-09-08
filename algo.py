@@ -3,6 +3,7 @@ import sys
 import math
 import queue
 import time
+import heapq
 
 # Initialize pygame
 pygame.init()
@@ -288,13 +289,13 @@ class Pillar:
         if self.image_direction == 'N':
             pygame.draw.rect(screen, BLUE, 
                             (scaled(self.x * CELL_SIZE) + border_thickness, 
-                            adjusted_y + 3 * quarter_cell, 
+                            adjusted_y + border_thickness, 
                             scaled(CELL_SIZE) - 2 * border_thickness, 
                             quarter_cell - border_thickness))
         elif self.image_direction == 'S':
             pygame.draw.rect(screen, BLUE, 
                             (scaled(self.x * CELL_SIZE) + border_thickness, 
-                            adjusted_y + border_thickness, 
+                            adjusted_y + 3 * quarter_cell, 
                             scaled(CELL_SIZE) - 2 * border_thickness, 
                             quarter_cell - border_thickness))
         elif self.image_direction == 'E':
@@ -333,13 +334,13 @@ class Button:
 
 # Sample pillars
 pillars = [
+    Pillar(15, 1, 'N'), 
+    # Pillar(15, 5, 'N'), 
+    Pillar(19, 15, 'W'),
     # Pillar(5, 5, 'N'), 
-    # Pillar(15, 5, 'E'), 
-    # Pillar(5, 15, 'S'), 
     # Pillar(15, 15, 'W'), 
-    Pillar(19, 15, 'W')
 ]
-#END GOAL FOR EACH PILLAR IS State(pillar.x-4, pillar.y-1, pillar.image_direction)
+#END GOAL FOR EACH PILLAR IS State(pillar.x-4, pillar.y-1, opposite of pillar.image_direction)
 
 
 # Initialize robot
@@ -544,17 +545,24 @@ for pillar in pillars:
 
 
 class PrioritizedItem:
+    _next_priority = 0  # Unique identifier for tie-breaking
+    
     def __init__(self, item, priority):
         self.item = item
         self.priority = priority
+        self.insertion_order = PrioritizedItem._next_priority
+        PrioritizedItem._next_priority += 1
 
     def __lt__(self, other):
-        # Compare based on priority (total_cost)
+        # Compare based on priority (total_cost) first,
+        # and use insertion order as a tie-breaker
+        if self.priority == other.priority:
+            return self.insertion_order < other.insertion_order
         return self.priority < other.priority
 
 def a_star_search(start_state, end_goal):
     # Initialize the open and closed sets
-    open_set = queue.PriorityQueue()
+    open_set = []
     closed_set = set()
 
     # Initialize dictionaries to keep track of actions and costs
@@ -562,10 +570,10 @@ def a_star_search(start_state, end_goal):
     costs = {start_state: 0}
 
     # Add the start state to the open set with priority 0
-    open_set.put(PrioritizedItem(start_state, 0))
-
-    while not open_set.empty():
-        current_item = open_set.get()
+    heapq.heappush(open_set, PrioritizedItem(start_state, 0))
+    
+    while open_set:
+        current_item = heapq.heappop(open_set)
         current_state = current_item.item
 
         if current_state.x == end_goal.x and current_state.y == end_goal.y and current_state.direction == end_goal.direction:
@@ -586,29 +594,28 @@ def a_star_search(start_state, end_goal):
             current_state.move_backward_right(),
             current_state.move_backward_left()
         ]
-        print(f"current State: {current_state.x},{current_state.y},{current_state.direction}")
+        print(f"current State: {current_state.x},{current_state.y},{current_state.direction}-------------------------------------------------------------")
         for successor in successor_states:
             new_state, action = successor
             if new_state:
                 # Calculate the cost for this action
-                if action == "F" or "B":
-                    action_cost = 10
+                if action == "F" or action == "B":
+                    action_cost = 1
                 else:
-                    action_cost = 50
-
+                    action_cost = 4
                 # Calculate the estimated cost to reach the goal (heuristic)
                 estimated_cost = calc_dist(new_state, end_goal)  # You need to implement calc_dist
-
+                
                 # Calculate the total cost
                 total_cost = costs[current_state] + action_cost + estimated_cost
-
+                print(f"new State: {new_state.x},{new_state.y},{new_state.direction}, est cost: {estimated_cost}, total cost: {total_cost}")
                 if new_state not in costs or total_cost < costs[new_state]:
                     # Update the action and cost dictionaries
                     actions[new_state] = actions[current_state] + [action]
-                    costs[new_state] = total_cost
+                    costs[new_state] = total_cost - estimated_cost
 
                     # Add the new_state to the open set with the total_cost as the priority
-                    open_set.put(PrioritizedItem(new_state, total_cost))
+                    heapq.heappush(open_set, PrioritizedItem(new_state, total_cost))
 
     # If no path is found, return None
     return None
