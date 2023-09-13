@@ -330,13 +330,12 @@ class Button:
 
 # Sample pillars
 pillars = [
-    Pillar(15, 1, 'N'), 
-    # Pillar(15, 5, 'N'), 
+    # Pillar(5, 2, 'E'), 
+    Pillar(11, 8, 'S'), 
     # Pillar(19, 15, 'W'),
     # Pillar(5, 5, 'N'), 
     # Pillar(15, 15, 'W'), 
 ]
-
 # Initialize robot
 robot = Robot(1, 1, 'E')
 

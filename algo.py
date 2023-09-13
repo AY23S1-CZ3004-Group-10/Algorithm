@@ -334,9 +334,9 @@ class Button:
 
 # Sample pillars
 pillars = [
-    Pillar(15, 1, 'N'), 
-    # Pillar(15, 5, 'N'), 
-    Pillar(19, 15, 'W'),
+    # Pillar(5, 2, 'E'), 
+    Pillar(11, 8, 'S'), 
+    # Pillar(19, 15, 'W'),
     # Pillar(5, 5, 'N'), 
     # Pillar(15, 15, 'W'), 
 ]
@@ -405,6 +405,11 @@ class State:
         return 0 <= new_x <= GRID_SIZE - 3 and 0 <= new_y <= GRID_SIZE - 3
 
     def check_collision(self, new_x, new_y, pillar_x, pillar_y):
+        # Floor the coordinates to align with the grid
+        new_x = math.floor(new_x)
+        new_y = math.floor(new_y)
+        pillar_x = math.floor(pillar_x)
+        pillar_y = math.floor(pillar_y)
         # Check if any part of the 3x3 robot footprint overlaps with the 3x3 pillar footprint
         for dx in range(3):  # Robot footprint width
             for dy in range(3):  # Robot footprint height
@@ -472,7 +477,18 @@ class State:
             dx, dy = -self.turning_radius, self.turning_radius
             new_direction = 'N'
 
-        return self.check_move(dx, dy, new_direction), "FR"
+        # Divide the turn into multiple steps
+        num_steps = 10  # Adjust the number of steps as needed
+        step_dx = dx / num_steps
+        step_dy = dy / num_steps
+
+        # Check for collisions at each intermediate position
+        for i in range(1,num_steps+1):
+            intermediate_state = self.check_move(step_dx*i, step_dy*i, new_direction)
+            if intermediate_state is None:
+                return None, None  # Collision detected at this step
+
+        return intermediate_state, "FR"
 
     def move_forward_left(self):
         dx, dy = 0, 0
@@ -490,7 +506,18 @@ class State:
             dx, dy = self.turning_radius, self.turning_radius
             new_direction = 'N'
 
-        return self.check_move(dx, dy, new_direction), "FL"
+        # Divide the turn into multiple steps
+        num_steps = 10  # Adjust the number of steps as needed
+        step_dx = dx / num_steps
+        step_dy = dy / num_steps
+
+        # Check for collisions at each intermediate position
+        for i in range(1,num_steps+1):
+            intermediate_state = self.check_move(step_dx*i, step_dy*i, new_direction)
+            if intermediate_state is None:
+                return None, None  # Collision detected at this step
+
+        return intermediate_state, "FL"
 
     def move_backward_right(self):
         dx, dy = 0, 0
@@ -508,7 +535,18 @@ class State:
             dx, dy = self.turning_radius, self.turning_radius
             new_direction = 'S'
 
-        return self.check_move(dx, dy, new_direction), "BR"
+        # Divide the turn into multiple steps
+        num_steps = 10  # Adjust the number of steps as needed
+        step_dx = dx / num_steps
+        step_dy = dy / num_steps
+
+        # Check for collisions at each intermediate position
+        for i in range(1,num_steps+1):
+            intermediate_state = self.check_move(step_dx*i, step_dy*i, new_direction)
+            if intermediate_state is None:
+                return None, None  # Collision detected at this step
+
+        return intermediate_state, "BR"
 
     def move_backward_left(self):
         dx, dy = 0, 0
@@ -526,19 +564,30 @@ class State:
             dx, dy = self.turning_radius, -self.turning_radius
             new_direction = 'N'
 
-        return self.check_move(dx, dy, new_direction), "BL"
+        # Divide the turn into multiple steps
+        num_steps = 10  # Adjust the number of steps as needed
+        step_dx = dx / num_steps
+        step_dy = dy / num_steps
+
+        # Check for collisions at each intermediate position
+        for i in range(1,num_steps+1):
+            intermediate_state = self.check_move(step_dx*i, step_dy*i, new_direction)
+            if intermediate_state is None:
+                return None, None  # Collision detected at this step
+
+        return intermediate_state, "BL"
     
 end_goals = []
 for pillar in pillars:
     if pillar.image_direction == 'N':
         direction = 'S'
-        end_goals.append(State(pillar.x-1, pillar.y+1, direction))
+        end_goals.append(State(pillar.x-1, pillar.y+2, direction))
     if pillar.image_direction == 'S':
         direction = 'N'
         end_goals.append(State(pillar.x-1, pillar.y-4, direction))
     if pillar.image_direction == 'E':
         direction = 'W'
-        end_goals.append(State(pillar.x+4, pillar.y-1, direction))
+        end_goals.append(State(pillar.x+2, pillar.y-1, direction))
     if pillar.image_direction == 'W':
         direction = 'E'
         end_goals.append(State(pillar.x-4, pillar.y-1, direction))
@@ -571,8 +620,9 @@ def a_star_search(start_state, end_goal):
 
     # Add the start state to the open set with priority 0
     heapq.heappush(open_set, PrioritizedItem(start_state, 0))
-    
+    k=0
     while open_set:
+        k+=1
         current_item = heapq.heappop(open_set)
         current_state = current_item.item
 
@@ -607,16 +657,17 @@ def a_star_search(start_state, end_goal):
                 estimated_cost = calc_dist(new_state, end_goal)  # You need to implement calc_dist
                 
                 # Calculate the total cost
-                total_cost = costs[current_state] + action_cost + estimated_cost
+                total_cost = costs[current_state] + action_cost
                 print(f"new State: {new_state.x},{new_state.y},{new_state.direction}, est cost: {estimated_cost}, total cost: {total_cost}")
                 if new_state not in costs or total_cost < costs[new_state]:
                     # Update the action and cost dictionaries
                     actions[new_state] = actions[current_state] + [action]
-                    costs[new_state] = total_cost - estimated_cost
+                    costs[new_state] = total_cost
 
                     # Add the new_state to the open set with the total_cost as the priority
-                    heapq.heappush(open_set, PrioritizedItem(new_state, total_cost))
-
+                    heapq.heappush(open_set, PrioritizedItem(new_state, total_cost + estimated_cost))
+        if k==10:
+            pass
     # If no path is found, return None
     return None
 
