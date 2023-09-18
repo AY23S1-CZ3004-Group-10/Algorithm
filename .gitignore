@@ -1,1 +1,5 @@
 tempCodeRunnerFile.py
+
+failed/
+.dist
+__pycache__/

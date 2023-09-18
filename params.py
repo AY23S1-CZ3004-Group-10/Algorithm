@@ -1,0 +1,9 @@
+ARENA_WIDTH = 200  # in cm
+ARENA_HEIGHT = 200  # in cm
+CELL_SIZE = 10  # in cm
+ROBOT_FOOTPRINT_WIDTH = 30  # in cm
+ROBOT_FOOTPRINT_HEIGHT = 30  # in cm
+ROBOT_ACTUAL_LENGTH = 18 # in cm (This is the non-direction-facing side now)
+ROBOT_ACTUAL_WIDTH = 23.5  # in cm (This is the direction-facing side)
+MIN_RADIUS = 16 # Basically TURNING_RADIUS
+WAYPOINT_DISTANCE = 25 # in cm
