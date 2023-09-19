@@ -7,12 +7,13 @@ from pillars import get_pillars
 from params import ARENA_WIDTH, ARENA_HEIGHT, ROBOT_ACTUAL_WIDTH, ROBOT_ACTUAL_LENGTH, ROBOT_FOOTPRINT_WIDTH, ROBOT_FOOTPRINT_HEIGHT, MIN_RADIUS
 
 class Robot:
-    def __init__(self, x, y, degrees, color='lightblue', pillars=get_pillars([])):
+    def __init__(self, x, y, degrees, pillars, color='lightblue'):
         self.x = x
         self.y = y
         self.degrees = degrees # 0 degrees is facing right, 90 degrees is facing up, etc.
-        self.color = color
         self.pillars = pillars
+        self.color = color
+    
         self.min_radius = MIN_RADIUS
         self.sim_x = x
         self.sim_y = y
@@ -175,54 +176,64 @@ class Robot:
         without actually drawing it. Returns True if a collision is detected, 
         and False otherwise.
         """
-        print(f"Simulating Reeds-Shepp Path...")
+        # print(f"Simulating Reeds-Shepp Path...")
+        # print(f"Simulation started at ({start_x}, {start_y}, {start_degrees})")
         temp_x, temp_y, temp_degrees = start_x, start_y, start_degrees
-        
+
         for e in path:
-            print(f"Simulating maneuver - Steering: {e.steering}, Gear: {e.gear}, Param: {e.param}")
-            # Calculate robot's movement for the current element but don't draw it
-            if e.steering == Steering.LEFT:
-                radius = self.min_radius
-                angle = rad2deg(e.param / self.min_radius)
-                if e.gear == Gear.BACKWARD:
-                    angle = -angle
+            # print(f"Simulating maneuver - Steering: {e.steering}, Gear: {e.gear}, Param: {e.param}")
 
-                # Print before
-                print(f"Before Left Turn Update:")
-                print(f"temp_x: {temp_x}, temp_y: {temp_y}, temp_degrees: {temp_degrees}, radius: {radius}, angle: {angle}")
+            # Divide each segment into checkpoints to monitor for collisions
+            check_points = [e.param / 4, e.param / 2, 3 * e.param / 4, e.param]
 
-                # Update robot's position and orientation for a left turn
-                temp_degrees += angle
-                temp_x += radius * (math.sin(math.radians(temp_degrees)) - math.sin(math.radians(temp_degrees - angle)))
-                temp_y -= radius * (math.cos(math.radians(temp_degrees)) - math.cos(math.radians(temp_degrees - angle)))
+            # Initialize previous checkpoint for interval calculation
+            prev_checkpoint = 0
 
-                # Print after
-                print(f"After Left Turn Update:")
-                print(f"temp_x: {temp_x}, temp_y: {temp_y}, temp_degrees: {temp_degrees}")
+            for checkpoint in check_points:
+                interval = checkpoint - prev_checkpoint
+                prev_checkpoint = checkpoint
 
-            elif e.steering == Steering.RIGHT:
-                radius = -self.min_radius
-                angle = rad2deg(e.param / self.min_radius)
-                if e.gear == Gear.FORWARD:
-                    angle = -angle
-                # Update robot's position and orientation for a right turn
-                temp_degrees += angle
-                temp_x += radius * (math.sin(math.radians(temp_degrees)) - math.sin(math.radians(temp_degrees - angle)))
-                temp_y -= radius * (math.cos(math.radians(temp_degrees)) - math.cos(math.radians(temp_degrees - angle)))
+                # Calculate robot's movement for the current element but don't draw it
+                dx, dy, d_angle = 0, 0, 0
 
-            elif e.steering == Steering.STRAIGHT:
-                dx = (1 if e.gear == Gear.FORWARD else -1) * e.param * math.cos(math.radians(temp_degrees))
-                dy = (1 if e.gear == Gear.FORWARD else -1) * e.param * math.sin(math.radians(temp_degrees))
+                if e.steering == Steering.LEFT:
+                    radius = self.min_radius
+                    d_angle = rad2deg(interval / self.min_radius)
+                    if e.gear == Gear.BACKWARD:
+                        d_angle = -d_angle
+
+                elif e.steering == Steering.RIGHT:
+                    radius = -self.min_radius
+                    d_angle = rad2deg(interval / self.min_radius)
+                    if e.gear == Gear.FORWARD:
+                        d_angle = -d_angle
+
+                elif e.steering == Steering.STRAIGHT:
+                    dx = (1 if e.gear == Gear.FORWARD else -1) * interval * math.cos(math.radians(temp_degrees))
+                    dy = (1 if e.gear == Gear.FORWARD else -1) * interval * math.sin(math.radians(temp_degrees))
+
+                # Apply the changes
+                temp_degrees += d_angle
+                temp_degrees = temp_degrees % 360  # Ensure degree is in [0, 360)
+                if e.steering in [Steering.LEFT, Steering.RIGHT]:
+                    angle_before = temp_degrees - d_angle
+                    dx = radius * (math.sin(math.radians(temp_degrees)) - math.sin(math.radians(angle_before)))
+                    dy = -radius * (math.cos(math.radians(temp_degrees)) - math.cos(math.radians(angle_before)))
                 temp_x += dx
                 temp_y += dy
 
-            # Check for collision (you'd need to implement the `collision_detected` method)
-            if self.collision_detected(temp_x, temp_y, temp_degrees):
-                print("Collision detected.")
-                return True, None, None, None
-        
-            print("No collision detected.")
+                # Check for collision
+                if self.collision_detected(temp_x, temp_y, temp_degrees):
+                    # print("Collision detected.")
+                    return True, None, None, None
+
+                # print(f"Checkpoint at Param {checkpoint}: Robot Position: ({temp_x}, {temp_y}, {temp_degrees})")
+
         return False, temp_x, temp_y, temp_degrees
+
+
+
+
     
     def calculate_footprint_corners(self, x, y, degrees):
         # Corners when the robot is facing right (0 degrees)
@@ -247,10 +258,12 @@ class Robot:
     def pillar_collision(self, x, y, pillar):
         # Define pillar collision zone boundary
         # 10 and 20 because true coord is bottom left corner of the pillar
-        x_min = pillar.x - 10
-        x_max = pillar.x + 20 
-        y_min = pillar.y - 10
-        y_max = pillar.y + 20
+        x_min = pillar.x - pillar.PADDING
+        x_max = pillar.x + pillar.PADDING + 10
+        y_min = pillar.y - pillar.PADDING
+        y_max = pillar.y + pillar.PADDING + 10
+
+        # print(f"Checking if ({x}, {y}) is within ({x_min}, {y_min}) and ({x_max}, {y_max})")
         
         # Check if the point lies within the boundary
         if x_min < x < x_max and y_min < y < y_max:
@@ -259,20 +272,35 @@ class Robot:
 
     def collision_detected(self, x, y, degrees):
         corners = self.calculate_footprint_corners(x, y, degrees)
-        
-        # Check each corner against the arena boundary
-        for cx, cy in corners:
-            if cx < 0 or cx > ARENA_WIDTH or cy < 0 or cy > ARENA_HEIGHT:
-                print(f"Boundary Collision at Corner: ({cx}, {cy})")
+        # print(f"Robot Footprint Corners: {corners}")
+
+        # Create edge midpoints based on the corners
+        edge_midpoints = [
+            ((corners[0][0] + corners[1][0]) / 2, (corners[0][1] + corners[1][1]) / 2),  # top edge
+            ((corners[1][0] + corners[2][0]) / 2, (corners[1][1] + corners[2][1]) / 2),  # right edge
+            ((corners[2][0] + corners[3][0]) / 2, (corners[2][1] + corners[3][1]) / 2),  # bottom edge
+            ((corners[3][0] + corners[0][0]) / 2, (corners[3][1] + corners[0][1]) / 2)   # left edge
+        ]
+
+        points_to_check = corners + edge_midpoints
+        # print(f"Points to Check: {points_to_check}")
+
+        PADDING = 10
+            
+        # Check each point against the arena boundary
+        for px, py in points_to_check:
+            if px < 0 - PADDING or px > ARENA_WIDTH + PADDING or py < 0 - PADDING or py > ARENA_HEIGHT + PADDING:
+                # print(f"Robot Position: ({x}, {y}, {degrees})")
+                # print(f"Boundary Collision at Point: ({px}, {py})")
                 return True
-        
+            
         # Check for pillar collisions
         for pillar in self.pillars:
-            for cx, cy in corners:
-                if self.pillar_collision(cx, cy, pillar):
-                    print(f"Pillar Collision at Corner: ({cx}, {cy}) with Pillar at ({pillar.x}, {pillar.y})")
+            for px, py in points_to_check:
+                if self.pillar_collision(px, py, pillar):
+                    # print(f"Robot Position: ({x}, {y}, {degrees})")
+                    # print(f"Pillar Collision at Point: ({px}, {py}) with Pillar at ({pillar.x}, {pillar.y})")
                     return True
-        
+            
         return False
         
-    

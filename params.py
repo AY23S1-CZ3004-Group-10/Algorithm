@@ -6,4 +6,4 @@ ROBOT_FOOTPRINT_HEIGHT = 30  # in cm
 ROBOT_ACTUAL_LENGTH = 18 # in cm (This is the non-direction-facing side now)
 ROBOT_ACTUAL_WIDTH = 23.5  # in cm (This is the direction-facing side)
 MIN_RADIUS = 16 # Basically TURNING_RADIUS
-WAYPOINT_DISTANCE = 25 # in cm
+WAYPOINT_DISTANCE = 30 # in cm

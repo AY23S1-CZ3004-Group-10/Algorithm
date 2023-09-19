@@ -10,6 +10,7 @@ class Pillar:
         self.y = y
         self.card_dir = card_dir  # could be an enum or string indicating direction
         self.scanned = scanned
+        self.PADDING = 7.5 #! Dangerous, adjust carefully
     
     def draw(self, ax):
         # The actual pillar cell
@@ -19,12 +20,16 @@ class Pillar:
 
         # The surrounding cells for collision zone
         infl_color = (1, 0.5, 0, 0.5)  # translucent orange using RGBA format
-        for i in [-10, 0, 10]:
-            for j in [-10, 0, 10]:
-                if i == 0 and j == 0:  # Skip the actual pillar cell
-                    continue
-                cell = patches.Rectangle((self.x + i, self.y + j), 10, 10, facecolor=infl_color)
-                ax.add_patch(cell)
+
+        # Calculate the start and end points for the collision zone
+        x_start = self.x - self.PADDING
+        y_start = self.y - self.PADDING
+        width = 10 + 2 * self.PADDING
+        height = width
+
+        # Draw a big rectangle for the collision zone
+        infl_zone = patches.Rectangle((x_start, y_start), width, height, facecolor=infl_color)
+        ax.add_patch(infl_zone)
 
         # Card size
         card_size = 7
