@@ -4,6 +4,8 @@ from pillars import get_pillars
 from robot import Robot
 from params import ARENA_WIDTH, ARENA_HEIGHT, CELL_SIZE
 from arena import draw_arena_boundary, world2grid
+import itertools
+import math
 
 def visualize(position, circles=False, color='orange'):
     pillar_data = [(80, 80, 'E'), (110, 20, 'E'), (190, 60, 'W'), (170, 180, 'S'), (70, 120, 'N'), (0, 80, 'E')]
@@ -33,60 +35,88 @@ def main():
 
     #? Finding path
     # [105, 75, 180, 0], [135, 25, 0, 1], [195, 95, 180, 2], [175, 185, -90, 3], [75, 125, 90, 4], [15, 185, -90, 5]
-    pillar_data = [(80, 80, 'E'), (110, 20, 'E'), (190, 60, 'W'), (170, 180, 'S'), (70, 120, 'N'), (0, 80, 'E')]
+    # pillar_data = [(80, 80, 'E'), (110, 20, 'E'), (190, 60, 'W'), (170, 180, 'S'), (70, 120, 'N'), (0, 80, 'E')]
+    pillar_data = [(180, 180, 'S'), (20, 170, 'E'), (180, 20, 'W')]
     pillars = get_pillars(pillar_data)
 
     robot = Robot(20, 20, 0, pillars) # Robot starting position
     for pillar in pillars:
         pillar.draw(ax)
 
-    PATH = [(robot.x, robot.y, robot.degrees)]
+    waypoints = []
     for pillar in pillars:
         pillar.draw(ax)
-        PATH.append(pillar.getWaypoint())
+        waypoints.append(pillar.getWaypoint())
 
-    print("Waypoints:", PATH)
+    print("Waypoints:", waypoints)
 
-    path_robots = []
-    for waypoint in PATH:
+    path_robots = [Robot(robot.x, robot.y, robot.degrees, get_pillars([]), 'lightblue')]
+    for waypoint in waypoints:
         path_robots.append(Robot(waypoint[0], waypoint[1], waypoint[2], get_pillars([]), 'lightblue'))
 
     for probot in path_robots:
         probot.draw(False)
 
-    path_length = 0
+    #hamiltonian path test
+    perms = list(itertools.permutations(waypoints))
+
+    def calc_distance(path):
+            # Create all target points, including the start.
+            dist = math.sqrt(((path[0][0] - robot.x) ** 2) +
+                                  ((path[0][1] - robot.y) ** 2))
+            for i in range(len(path) - 1):
+                dist += math.sqrt(((path[i][0] - path[i + 1][0]) ** 2) +
+                                  ((path[i][1] - path[i + 1][1]) ** 2))
+            return dist
+    PATHS = sorted(perms, key=calc_distance)
+
+    def has_final_path(PATH):
+        path_length = 0
+        for i in range(len(PATH) - 1):
+            print(f"Finding path from {PATH[i]} to {PATH[i+1]}...")
+            paths = rs.get_sorted_paths(PATH[i], PATH[i+1])
+
+            # Check if no path exist
+            if not paths:
+                print("No path exists between {} and {}.".format(PATH[i], PATH[i+1]))
+                return False
+
+            valid_path_found = False
+            for potential_path in paths:
+                collision_detected, end_x, end_y, end_degrees = robot.simulate_reeds_shepps_path(potential_path, robot.sim_x, robot.sim_y, robot.sim_degrees)
+
+                if not collision_detected:
+                    # If there is no collision, it's a valid path.
+                    print(f"Path Found and Added!: {potential_path}, length: {rs.path_length(potential_path)}")
+                    final_path.append(potential_path)
+                    path_length += rs.path_length(potential_path)
+                    valid_path_found = True
+
+                    # Update the robot's position and orientation for the next segment
+                    robot.sim_x, robot.sim_y, robot.sim_degrees = end_x, end_y, end_degrees
+                    break
+
+            if not valid_path_found:
+                print(f"No valid paths found between {PATH[i]} and {PATH[i+1]}.")
+                return False
+
+        # Now you have your final path (which is a list of paths) and its length.
+        print("Final Path Length:", path_length)
+        return True
+
     final_path = []
-
-    for i in range(len(PATH) - 1):
-        print(f"Finding path from {PATH[i]} to {PATH[i+1]}...")
-        paths = rs.get_sorted_paths(PATH[i], PATH[i+1])
-
-        # Check if no path exist
-        if not paths:
-            print("No path exists between {} and {}.".format(PATH[i], PATH[i+1]))
+    for PATH in PATHS:
+        # insert starting point
+        l = list(PATH)
+        l.insert(0, (robot.x, robot.y, robot.degrees))
+        PATH = tuple(l)
+        if has_final_path(PATH):
             break
+        final_path = []
 
-        valid_path_found = False
-        for potential_path in paths:
-            collision_detected, end_x, end_y, end_degrees = robot.simulate_reeds_shepps_path(potential_path, robot.sim_x, robot.sim_y, robot.sim_degrees)
+    if not final_path:
+        print("No Paths Found at All!")
 
-            if not collision_detected:
-                # If there is no collision, it's a valid path.
-                print(f"Path Found and Added!: {potential_path}, length: {rs.path_length(potential_path)}")
-                final_path.append(potential_path)
-                path_length += rs.path_length(potential_path)
-                valid_path_found = True
-
-                # Update the robot's position and orientation for the next segment
-                robot.sim_x, robot.sim_y, robot.sim_degrees = end_x, end_y, end_degrees
-                break
-
-        if not valid_path_found:
-            print(f"No valid paths found between {PATH[i]} and {PATH[i+1]}.")
-            break
-
-    # Now you have your final path (which is a list of paths) and its length.
-    print("Final Path Length:", path_length)
 
     for path in final_path:
         print("Path:")
