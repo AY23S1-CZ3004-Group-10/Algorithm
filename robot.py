@@ -73,8 +73,8 @@ class Robot:
         for subpath in path:
             for e in subpath:
                 self.execute_maneuver(e)
-            # print(f"Robot position: ({self.x}, {self.y}, {self.degrees})")
-            # self.draw()
+                # print(f"Robot position: ({self.x}, {self.y}, {self.degrees})")
+                # self.draw()
 
     def rotate_point(self, x, y, x_center, y_center, theta_degrees):
         """Rotate a point around a given center."""
@@ -107,32 +107,32 @@ class Robot:
         # Variables to adjust the robot's actual representation based on orientation
         robot_width, robot_length = ROBOT_ACTUAL_WIDTH, ROBOT_ACTUAL_LENGTH
         
-        # Compute the robot's footprint without rotation first
-        footprint_x, footprint_y = x, y
+        # The (x, y) represents the left center of the actual robot
+        # Therefore, to get the bottom-left starting point of the robot:
+        robot_x = x
+        robot_y = y - robot_length / 2
         
-        # Rotate the robot footprint around (x, y)
+        # Calculate the footprint's bottom-left corner starting point to center the robot within it
+        footprint_x = robot_x - (ROBOT_FOOTPRINT_WIDTH - robot_width) / 2
+        footprint_y = robot_y - (ROBOT_FOOTPRINT_HEIGHT - robot_length) / 2
+        
+        # Rotate the footprint corner around (x, y)
         footprint_x_rot, footprint_y_rot = self.rotate_point(footprint_x, footprint_y, x, y, degrees)
         
         footprint_color = 'red' if self.collision_detected(self.x, self.y, self.degrees) else 'lightgrey'
-
         footprint = patches.Rectangle((footprint_x_rot, footprint_y_rot), ROBOT_FOOTPRINT_WIDTH, ROBOT_FOOTPRINT_HEIGHT, 
                                     facecolor=footprint_color, alpha=0.5, edgecolor='black', linewidth=1, angle=degrees)
         plt.gca().add_patch(footprint)
-
-        # Calculate actual robot starting point to keep it centered in the footprint
-        robot_x = x + (ROBOT_FOOTPRINT_WIDTH - robot_width) / 2
-        robot_y = y + (ROBOT_FOOTPRINT_HEIGHT - robot_length) / 2
         
         # Rotate robot rectangle based on the given degrees around (x, y)
         robot_x_rot, robot_y_rot = self.rotate_point(robot_x, robot_y, x, y, degrees)
-        
         robot = patches.Rectangle((robot_x_rot, robot_y_rot), robot_width, robot_length, 
                                 facecolor=color, edgecolor='black', linewidth=1, angle=degrees)
         plt.gca().add_patch(robot)
 
         # Center coordinates of the footprint for arrow placement (before rotation)
-        cx = x + ROBOT_FOOTPRINT_WIDTH / 2
-        cy = y + ROBOT_FOOTPRINT_HEIGHT / 2
+        cx = footprint_x + ROBOT_FOOTPRINT_WIDTH / 2
+        cy = footprint_y + ROBOT_FOOTPRINT_HEIGHT / 2
 
         # Arrow's tip assuming robot is at 0-degree orientation (pointing right, before rotation)
         arrow_tip_x = cx + ROBOT_FOOTPRINT_WIDTH / 2
@@ -150,6 +150,15 @@ class Robot:
 
         # Draw the arrow
         plt.arrow(r_cx, r_cy, dx, dy, head_width=5, head_length=5, fc='red', ec='red')
+
+
+        # Calculate the delta values for the arrow shaft
+        dx = r_arrow_tip_x - r_cx
+        dy = r_arrow_tip_y - r_cy
+
+        # Draw the arrow
+        plt.arrow(r_cx, r_cy, dx, dy, head_width=5, head_length=5, fc='red', ec='red')
+
 
     def draw_turning_circles(self, x, y, min_radius, degrees):
         # Calculate turning circle centers assuming 0-degree orientation
@@ -231,10 +240,6 @@ class Robot:
 
         return False, temp_x, temp_y, temp_degrees
 
-
-
-
-    
     def calculate_footprint_corners(self, x, y, degrees):
         # Corners when the robot is facing right (0 degrees)
         bl = (x, y)
