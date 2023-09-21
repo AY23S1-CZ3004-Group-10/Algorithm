@@ -1,16 +1,16 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from params import WAYPOINT_DISTANCE
+from params import WAYPOINT_DISTANCE, PILLAR_INFLATION
 
 class Pillar:
     def __init__(self, x, y, card_dir, scanned=False):
-        assert card_dir in ['N', 'S', 'E', 'W'], "card_dir must be one of 'N', 'S', 'E', 'W'"
+        assert card_dir in ['N', 'S', 'E', 'W', 'X'], "card_dir must be one of 'N', 'S', 'E', 'W', 'X'"
 
         self.x = x
         self.y = y
         self.card_dir = card_dir  # could be an enum or string indicating direction
         self.scanned = scanned
-        self.PADDING = 7.5 #! Dangerous, adjust carefully
+        self.PADDING = PILLAR_INFLATION #! Dangerous, adjust carefully
     
     def draw(self, ax):
         # The actual pillar cell
@@ -46,7 +46,7 @@ class Pillar:
     def getWaypoint(self):
         # Distance from the center of the pillar to the desired waypoint (pillar radius + robot footprint/2 + distance to snap)
         offset_distance = 15 + 15 + WAYPOINT_DISTANCE
-        offset_center = 15  # Half the robot's dimension
+        offset_center = 0  # Half the robot's dimension
         
         pillar_center_x = self.x + 5  # Center x of the pillar
         pillar_center_y = self.y + 5  # Center y of the pillar
@@ -60,6 +60,24 @@ class Pillar:
         elif self.card_dir == 'W':
             return (pillar_center_x - offset_distance, pillar_center_y - offset_center, 0)    # Robot is located to the west of the card and faces east.
         
+    def getFourWaypoints(self):
+        directions = ['N', 'S', 'E', 'W']
+        waypoints = []
+
+        # Temporarily store the original direction
+        original_dir = self.card_dir
+        
+        for direction in directions:
+            self.card_dir = direction
+            waypoints.append(self.getWaypoint())
+
+        # Restore the original direction
+        self.card_dir = original_dir
+
+        return waypoints
+
+
+
 def get_pillars(pillar_data):
     pillars = [Pillar(x, y, card_dir) for x, y, card_dir in pillar_data]
     return pillars
